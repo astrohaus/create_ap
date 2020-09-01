@@ -47,6 +47,7 @@ usage() {
     echo "  --redirect-to-localhost If -n is set, redirect every web request to localhost (useful for public information networks)"
     echo "  --hostapd-debug <level> With level between 1 and 2, passes arguments -d or -dd to hostapd for debugging."
     echo "  --isolate-clients       Disable communication between clients"
+    echo "  --ieee80211b            Force IEEE 802.11b"
     echo "  --ieee80211n            Enable IEEE 802.11n (HT)"
     echo "  --ieee80211ac           Enable IEEE 802.11ac (VHT)"
     echo "  --ht_capab <HT>         HT capabilities (default: [HT40+])"
@@ -638,6 +639,7 @@ MAC_FILTER=0
 MAC_FILTER_ACCEPT=/etc/hostapd/hostapd.accept
 ISOLATE_CLIENTS=0
 SHARE_METHOD=nat
+IEEE80211B=0
 IEEE80211N=0
 IEEE80211AC=0
 HT_CAPAB='[HT40+]'
@@ -657,7 +659,7 @@ HOSTAPD_DEBUG_ARGS=
 REDIRECT_TO_LOCALHOST=0
 
 CONFIG_OPTS=(CHANNEL GATEWAY WPA_VERSION ETC_HOSTS DHCP_DNS NO_DNS NO_DNSMASQ HIDDEN MAC_FILTER MAC_FILTER_ACCEPT ISOLATE_CLIENTS
-             SHARE_METHOD IEEE80211N IEEE80211AC HT_CAPAB VHT_CAPAB DRIVER NO_VIRT COUNTRY FREQ_BAND
+             SHARE_METHOD IEEE80211B IEEE80211N IEEE80211AC HT_CAPAB VHT_CAPAB DRIVER NO_VIRT COUNTRY FREQ_BAND
              NEW_MACADDR DAEMONIZE DAEMON_PIDFILE DAEMON_LOGFILE NO_HAVEGED WIFI_IFACE INTERNET_IFACE
              SSID PASSPHRASE USE_PSK)
 
@@ -1054,7 +1056,7 @@ for ((i=0; i<$#; i++)); do
     fi
 done
 
-GETOPT_ARGS=$(getopt -o hc:w:g:de:nm: -l "help","hidden","hostapd-debug:","redirect-to-localhost","mac-filter","mac-filter-accept:","isolate-clients","ieee80211n","ieee80211ac","ht_capab:","vht_capab:","driver:","no-virt","fix-unmanaged","country:","freq-band:","mac:","dhcp-dns:","daemon","pidfile:","logfile:","stop:","list","list-running","list-clients:","version","psk","no-haveged","no-dns","no-dnsmasq","mkconfig:","config:" -n "$PROGNAME" -- "$@")
+GETOPT_ARGS=$(getopt -o hc:w:g:de:nm: -l "help","hidden","hostapd-debug:","redirect-to-localhost","mac-filter","mac-filter-accept:","isolate-clients","ieee80211n","ieee80211ac","ieee80211b","ht_capab:","vht_capab:","driver:","no-virt","fix-unmanaged","country:","freq-band:","mac:","dhcp-dns:","daemon","pidfile:","logfile:","stop:","list","list-running","list-clients:","version","psk","no-haveged","no-dns","no-dnsmasq","mkconfig:","config:" -n "$PROGNAME" -- "$@")
 [[ $? -ne 0 ]] && exit 1
 eval set -- "$GETOPT_ARGS"
 
@@ -1122,6 +1124,10 @@ while :; do
         --ieee80211n)
             shift
             IEEE80211N=1
+            ;;
+	--ieee80211b)
+            shift
+            IEEE80211B=1
             ;;
         --ieee80211ac)
             shift
@@ -1657,7 +1663,17 @@ EOF
 fi
 
 if [[ $FREQ_BAND == 2.4 ]]; then
-    echo "hw_mode=g" >> $CONFDIR/hostapd.conf
+    if [[ $IEEE80211B -eq 1 ]]; then
+	echo "hw_mode=b" >> $CONFDIR/hostapd.conf
+        echo "basic_rates=10 20 55 110" >> $CONFDIR/hostapd.conf
+        echo "supported_rates=10 20 55 110" >> $CONFDIR/hostapd.conf
+    else
+	echo "hw_mode=g" >> $CONFDIR/hostapd.conf
+	if [[ $IEEE80211N -ne 1 ]]; then
+  	    echo "basic_rates=60 90 120 180 240 360 480 540" >> $CONFDIR/hostapd.conf
+	    echo "supported_rates=60 90 120 180 240 360 480 540" >> $CONFDIR/hostapd.conf
+	fi
+    fi
 else
     echo "hw_mode=a" >> $CONFDIR/hostapd.conf
 fi
