@@ -1644,7 +1644,7 @@ fi
 
 # hostapd config
 cat << EOF > $CONFDIR/hostapd.conf
-beacon_int=100
+beacon_int=15
 ssid=${SSID}
 interface=${WIFI_IFACE}
 driver=${DRIVER}
